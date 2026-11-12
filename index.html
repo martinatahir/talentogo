@@ -115,7 +115,7 @@ html.js .remate{clip-path:circle(0 at var(--x,20%) var(--y,80%));visibility:hidd
 html:not(.js) .remate{position:relative;inset:auto;min-height:100svh}
 html:not(.js) .cta,html:not(.js) .close,html:not(.js) .cyl{display:none}
 html.js .remate.open{clip-path:circle(150% at var(--x,20%) var(--y,80%));visibility:visible;transition:clip-path .95s var(--ease),visibility 0s}
-.remate p{position:relative;font-size:clamp(2.8rem,min(13vw,15vh),8rem);font-weight:800;font-stretch:84%;line-height:.92;letter-spacing:-.035em;max-width:11ch}
+.remate p{position:relative;font-size:clamp(2.6rem,min(11vw,12.5vh),7rem);font-weight:800;font-stretch:84%;line-height:.94;letter-spacing:-.035em;max-width:15ch;text-wrap:balance}
 .remate p span{display:block}
 .remate p span + span{margin-top:.14em}
 .remate .hole{position:absolute;right:clamp(-10px,8vw,150px);bottom:var(--bar);height:min(72%,620px);width:auto;fill:var(--ink);opacity:.16;transform:translateY(35%);transition:transform 1.2s var(--ease) .2s}
@@ -190,14 +190,10 @@ li[data-s="on"] .pin{color:var(--yellow)}
   .dientes li{align-items:baseline}
   .remate .hole{right:-14px;height:34svh}
   .valor .lock{position:absolute;right:-4px;bottom:-24px;height:17svh}
-  .go{display:block;padding:0}
-  .go .wrap{padding:clamp(36px,7vh,72px) var(--pad-x) calc(var(--bar) + clamp(20px,4vh,44px));min-height:100svh;row-gap:clamp(18px,3.2vh,40px)}
+  .go .wrap{padding-right:0;row-gap:clamp(18px,3.2vh,40px)}
   .go h2{font-size:var(--fs-h2)}
   .go .wrap p{font-size:var(--fs-body)}
   .go .wrap p.lead{font-size:var(--fs-lead)}
-  .go .cta,.close{display:none}
-  html.js .remate{position:relative;inset:auto;min-height:100svh;clip-path:none;visibility:visible;transition:none;scroll-snap-align:start}
-  .remate .hole{transform:none}
   .contacto{flex-direction:column}
   .door{top:clamp(28px,5vh,52px);bottom:auto;right:12px;height:15svh}
 }
@@ -309,7 +305,7 @@ li[data-s="on"] .pin{color:var(--yellow)}
     </div>
     <div class="remate" id="remate">
       <svg class="hole" viewBox="0 0 200 320" aria-hidden="true" focusable="false"><circle cx="100" cy="88" r="84"/><path d="M66 140h68l30 180H36z"/></svg>
-      <p><span>Las llaves dan acceso.</span> <span>Yo vengo a destrabar.</span></p>
+      <p><span>Acá está la llave.</span> <span>¿Abrimos la próxima puerta juntos?</span></p>
       <div class="pie">
         <ul class="contacto">
           <li><a href="mailto:tahirmartinanicole@gmail.com">
@@ -354,14 +350,13 @@ li[data-s="on"] .pin{color:var(--yellow)}
   const calm = matchMedia('(prefers-reduced-motion: reduce)');
   const small = matchMedia('(max-width: 820px)');
   const last = secs.length - 1;
-  // on phones the closing line is always on screen, so it must stay reachable
   const goWrap = $('.go .wrap');
   const sync = () => {
     const open = remate.classList.contains('open');
-    remate.inert = !small.matches && !open;
-    goWrap.inert = !small.matches && open;
+    remate.inert = !open;
+    goWrap.inert = open;
   };
-  let active = -1;
+  let active = -1, shown = false, timer = 0;
 
   const go = (i) => secs[Math.max(0, Math.min(secs.length - 1, i))]
     .scrollIntoView({ behavior: calm.matches ? 'auto' : 'smooth', block: 'start' });
@@ -381,7 +376,6 @@ li[data-s="on"] .pin{color:var(--yellow)}
       if (top <= h * 0.5) now = i;
       if (top < h * 0.8) s.classList.add('in');
     });
-    next.disabled = now === last && (!small.matches || remate.getBoundingClientRect().top <= h * 0.5);
     if (now === active) return;
     active = now;
     items.forEach((li, i) => {
@@ -390,6 +384,10 @@ li[data-s="on"] .pin{color:var(--yellow)}
     });
     track.style.setProperty('--p', (now + 1) / secs.length);
     prev.disabled = now === 0;
+    next.disabled = now === last;
+    // phones: nobody is presenting, so the closing line opens by itself once, after time to read
+    clearTimeout(timer);
+    if (now === last && small.matches && !shown) timer = setTimeout(() => { if (active === last && !shown) openRemate(); }, 9000);
     if (now !== secs.length - 1 && remate.classList.contains('open')) {
       remate.classList.remove('open'); sync(); turn.setAttribute('aria-expanded', false);
     }
@@ -402,22 +400,21 @@ li[data-s="on"] .pin{color:var(--yellow)}
     requestAnimationFrame(() => { tick = false; update(); });
   }, { passive: true });
   addEventListener('resize', update);
-  small.addEventListener('change', () => { sync(); update(); });
   sync();
   update();
 
   items.forEach((li, i) => li.firstElementChild.addEventListener('click', () => go(i)));
   prev.addEventListener('click', () => go(active - 1));
-  next.addEventListener('click', () => active === last
-    ? remate.scrollIntoView({ behavior: calm.matches ? 'auto' : 'smooth', block: 'start' })
-    : go(active + 1));
+  next.addEventListener('click', () => go(active + 1));
 
-  turn.addEventListener('click', () => {
+  function openRemate() {
+    shown = true;
     const r = turn.getBoundingClientRect(), s = remate.getBoundingClientRect();
     remate.style.setProperty('--x', `${r.left + 40 - s.left}px`);
     remate.style.setProperty('--y', `${r.top + r.height / 2 - s.top}px`);
     setOpen(true);
-  });
+  }
+  turn.addEventListener('click', openRemate);
   close.addEventListener('click', () => setOpen(false));
 
   addEventListener('keydown', (e) => {
@@ -429,8 +426,7 @@ li[data-s="on"] .pin{color:var(--yellow)}
                  Home: 0, End: secs.length - 1 }[k];
     if (to === undefined) return;
     e.preventDefault();
-    if (small.matches && active === last && to >= last) remate.scrollIntoView({ behavior: calm.matches ? 'auto' : 'smooth', block: 'start' });
-    else go(to);
+    go(to);
   });
 })();
 </script>
